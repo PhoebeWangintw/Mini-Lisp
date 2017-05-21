@@ -27,7 +27,10 @@
 %left '(' ')'
 %nonassoc UMINUS
 %%
-PROGRAM : STMT STMT
+PROGRAM : STMT STMTS
+        ;
+STMTS   : STMT
+        | /* lambda */
         ;
 STMT    : EXP
         | DEF-STMT
@@ -37,6 +40,9 @@ STMT    : EXP
 PRINT-STMT : '(' print-num EXP ')'
            | '(' print-bool EXP ')'
            ;
+EXPS    : EXP
+        | /* lambda */
+        ;
 EXP     : bool-val
         | number
         | VARIABLE
@@ -55,11 +61,11 @@ NUM-OP  : PLUS
         | SMALLER
         | EQUAL
         ;
-        PLUS    : '(' '+' EXP EXP ')'
+        PLUS    : '(' '+' EXP EXPS ')'
                 ;
         MINUS   : '(' '-' EXP EXP ')'
                 ;
-        MULTIPLY: '(' '*' EXP EXP ')'
+        MULTIPLY: '(' '*' EXP EXPS ')'
                 ;
         DIVID   : '(' '/' EXP EXP ')'
                 ;
@@ -69,15 +75,15 @@ NUM-OP  : PLUS
                 ;
         SMALLER : '(' '<' EXP EXP ')'
                 ;
-        EQUAL   : '(' '=' EXP EXP ')'
+        EQUAL   : '(' '=' EXP EXPS ')'
                 ;
 LOGICAL-OP: AND-OP
           | OR-OP
           | NOT-OP
           ;
-        AND-OP  : '(' and EXP EXP ')'
+        AND-OP  : '(' and EXP EXPS ')'
                 ;
-        OR-OP   : '(' or EXP EXP ')'
+        OR-OP   : '(' or EXP EXPS ')'
                 ;
         NOT-OP  : '(' not EXP ')'
                 ;
@@ -91,8 +97,8 @@ FUN-EXP : '(' fun FUN_IDs FUN-BODY ')'
                 ;
         FUN-BODY: EXP
                 ;
-        FUN-CALL: '(' FUN-EXP PARAM ')'
-                | '(' FUN-NAME PARAM ')'
+        FUN-CALL: '(' FUN-EXP PARAM ')'  {}
+                | '(' FUN-NAME PARAM ')' {//ex. (fib 1)}
                 ;
         PARAM   : EXP
                 ;
