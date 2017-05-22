@@ -3,12 +3,32 @@
     #include<stdlib.h>
     extern int yylex(void);
     void yyerror(const char *msg);
+    // TODO: creating a linked list to store defined variables
+    // TODO: creating a linked list to store AST of the defined function.
+    enum ASTType {
+        AST_ADD,
+        AST_MINUS,
+        AST_MUL,
+        AST_DIV,
+        AST_MOD,
+        AST_AND,
+        AST_OR,
+        AST_NOT,
+        AST_FUN,
+        AST_IF,
+        AST_PNUM,
+        AST_PBOOL
+    }
+    struct ASTNode {
+        enum ASTType type;
+    };
 %}
 %union {
+    int bool;
     int num;
     char *id;
 }
-%token bool-val
+%token<bool> bool-val
 %token<num> number
 %token<id> id
 %token mod
@@ -61,17 +81,17 @@ NUM-OP  : PLUS
         | SMALLER
         | EQUAL
         ;
-        PLUS    : '(' '+' EXP EXPS ')'
+        PLUS    : '(' '+' EXP EXPS ')' { //(+ 1 2 3 4) }
                 ;
-        MINUS   : '(' '-' EXP EXP ')'
+        MINUS   : '(' '-' EXP EXP ')' { //(- 2 1) = 1 }
                 ;
-        MULTIPLY: '(' '*' EXP EXPS ')'
+        MULTIPLY: '(' '*' EXP EXPS ')' { //(* 1 2 3 4) }
                 ;
-        DIVID   : '(' '/' EXP EXP ')'
+        DIVID   : '(' '/' EXP EXP ')' { //(/ 3 2) = 1 }
                 ;
-        MODULUS : '(' mod EXP EXP ')'
+        MODULUS : '(' mod EXP EXP ')' { //(mod 8 5) = 3 }
                 ;
-        GREATER : '(' '>' EXP EXP ')'
+        GREATER : '(' '>' EXP EXP ')' { //(> 1 2)}
                 ;
         SMALLER : '(' '<' EXP EXP ')'
                 ;
