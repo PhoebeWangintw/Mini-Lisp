@@ -1,9 +1,8 @@
 all:
-	bison -d -o y.tab.c file.y
-	gcc -c -g -I.. y.tab.c
-	flex -o lex.yy.c file.l
-	gcc -c -g -I.. lex.yy.c
-	gcc -o file y.tab.o lex.yy.o -ll
-
-clean:
-	rm lex.yy.c lex.yy.o y.tab.c  y.tab.h  y.tab.o
+	bison -d -o file.tab.cc file.yy
+	g++ -c -g -I.. file.tab.cc
+	flex -o lex.yy.cc file.l
+	g++ -c -g -I.. lex.yy.cc
+	g++ -o file file.tab.o lex.yy.o -ll
+clear:
+	rm file file.tab.o lex.yy.o lex.yy.cc file.tab.cc file.tab.hh

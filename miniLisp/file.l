@@ -1,5 +1,7 @@
 %{
-    #include "file.tab.h"    
+    #include<iostream>
+    #include<cstdlib>
+    #include "file.tab.hh"
 %}
 separator  [ \t\n\r]
 letter     [a-z]
@@ -9,18 +11,20 @@ ID         {letter}({letter}|{digit}|"-")*
 bool-val   #[t|f]
 %%
 \n           { return(0); }
-[]           { // ignore. }
-{bool-val}   { yylval.bool = strdup(boolVal);}
-{number}     { yylval.num = number; return (number); }
-{ID}         { yylval.id = number; return (id); }
-"mod"        { return(strdup(yytext)); }
-"and"        {}
-"or"         {}
-"not"        {}
-"define"     {}
-"fun"        {}
-"if"         {}
-"print-num"  {}
-"print-bool" {}
+[ ]          { }
+"mod"        { return(MOD); }
+"and"        { return(AND); }
+"or"         { return(OR); }
+"not"        { return(NOT); }
+"define"     { return(DEFINE); }
+"fun"        { return(FUN); }
+"if"         { return(IF); }
+"print-num"  { return(PRINT_NUM); }
+"print-bool" { return(PRINT_BOOL); }
+{bool-val}   { if (yytext[1] == 't') yylval.b = false;
+               else yylval.b = true;
+               return(BOOL); }
+{number}     { yylval.num = atoi(yytext); return(NUM); }
+{ID}         { yylval.id = strdup(yytext); return(ID); }
 .            { return(yytext[0]); }
 %%
