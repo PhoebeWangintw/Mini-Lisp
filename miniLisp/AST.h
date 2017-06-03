@@ -2,6 +2,7 @@
 #define AST_H
 
 enum ASTType {
+    AST_ROOT,
     AST_ADD,
     AST_MINUS,
     AST_MUL,
@@ -20,14 +21,9 @@ enum ASTType {
     AST_NUM,
     AST_ID,
     AST_BOOL,
-    AST_LAMBDA
 };
 
 struct ASTNode {
-    enum ASTType type;
-};    
-
-struct ASTArithmatic {
     enum ASTType type;
     struct ASTNode *lhs, *rhs;
 };
@@ -36,6 +32,7 @@ struct ASTVal {
     // for terminal.
     enum ASTType type;
     int num;
+    bool b;
     char *val;
 };
 
