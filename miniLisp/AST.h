@@ -18,9 +18,10 @@ enum ASTType {
     AST_IF,
     AST_PNUM,
     AST_PBOOL,
+    AST_BOOL,
     AST_NUM,
     AST_ID,
-    AST_BOOL,
+    AST_NULL
 };
 
 struct ASTNode {
@@ -29,11 +30,26 @@ struct ASTNode {
 };
 
 struct ASTVal {
-    // for terminal.
     enum ASTType type;
     int num;
     bool b;
-    char *val;
+    char *id;
+};
+
+/* for terminal */
+struct ASTNum {
+    enum ASTType type;
+    int num;
+};
+
+struct ASTBool {
+    enum ASTType type;
+    bool b;
+};
+
+struct ASTId {
+    enum ASTType type;
+    char *id;
 };
 
 struct fun {

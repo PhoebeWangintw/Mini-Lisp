@@ -1,7 +1,10 @@
 %{
     #include<iostream>
     #include<cstdlib>
+    #include<stack>
+    #include "AST.h"
     #include "file.tab.hh"
+    extern std::stack<ASTType> stack_type;
 %}
 separator  [ \t\n\r]
 letter     [a-z]
@@ -26,5 +29,8 @@ bool-val   #[t|f]
                return(BOOL); }
 {number}     { yylval.num = atoi(yytext); return(NUM); }
 {ID}         { yylval.id = strdup(yytext); return(ID); }
+"+"          { stack_type.push(AST_ADD); return(yytext[0]); }
+"*"          { stack_type.push(AST_MUL); return(yytext[0]); }
+"="          { stack_type.push(AST_EQUAL); return(yytext[0]); }
 .            { return(yytext[0]); }
 %%
