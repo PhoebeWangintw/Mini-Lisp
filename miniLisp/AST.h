@@ -29,6 +29,11 @@ struct ASTNode {
     struct ASTNode *lhs, *rhs;
 };
 
+struct ASTIf {
+    enum ASTType type;
+    struct ASTNode *lhs, *mhs, *rhs;
+};
+
 struct ASTVal {
     enum ASTType type;
     int num;

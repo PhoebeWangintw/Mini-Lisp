@@ -14,6 +14,7 @@
     struct ASTVal* ASTVisit(struct ASTNode *);
     int ASTArith(struct ASTNode *);
     bool ASTLogical(struct ASTNode *);
+    struct ASTNode* ASTIf_stmt(struct ASTNode *node);
     struct ASTNode* root;
     std::stack<ASTType> stack_type;
 %}
@@ -32,6 +33,7 @@
 %type<node> plus minus multiply divid modulus greater smaller equal
 %type<node> num_op logical_op fun_exp fun_call if_exp
 %type<node> and_op or_op not_op
+%type<node> test_exp then_exp else_exp
 %type<node> variable
 
 %left BOOL NUM ID
@@ -112,9 +114,10 @@ num_op: plus | minus | multiply | divid | modulus | greater | smaller | equal ;
         minus: '(' '-' exp exp ')' { 
                     // (- 2 1) = 1 
                    $$ = (struct ASTNode *)malloc(sizeof(struct ASTNode));
-                   $$->type = AST_MINUS;
+                   $$->type = stack_type.top();
                    $$->lhs = $3;
                    $$->rhs = $4;
+                   stack_type.pop();
                 }
                 ;
         multiply: '(' '*' exp exp exps ')' { 
@@ -133,32 +136,36 @@ num_op: plus | minus | multiply | divid | modulus | greater | smaller | equal ;
         divid: '(' '/' exp exp ')' { 
                     // (/ 3 2) = 1 
                    $$ = (struct ASTNode *)malloc(sizeof(struct ASTNode));
-                   $$->type = AST_DIV;
+                   $$->type = stack_type.top();
                    $$->lhs = $3;
                    $$->rhs = $4;
+                   stack_type.pop();
                 }
                 ;
         modulus: '(' MOD exp exp ')' {
                     // (mod 8 5) = 3 
                    $$ = (struct ASTNode *)malloc(sizeof(struct ASTNode));
-                   $$->type = AST_MOD;
+                   $$->type = stack_type.top();
                    $$->lhs = $3;
                    $$->rhs = $4;
+                   stack_type.pop()
                  }
                 ;
         greater: '(' '>' exp exp ')' { 
                     // (> 1 2)
                    $$ = (struct ASTNode *)malloc(sizeof(struct ASTNode));
-                   $$->type = AST_GREATER;
+                   $$->type = stack_type.top();
                    $$->lhs = $3;
                    $$->rhs = $4;
+                   stack_type.pop()
                 }
                 ;
         smaller: '(' '<' exp exp ')' {
                    $$ = (struct ASTNode *)malloc(sizeof(struct ASTNode));
-                   $$->type = AST_SMALLER;
+                   $$->type = stack_type.top();
                    $$->lhs = $3;
                    $$->rhs = $4;
+                   stack_type.pop();
                 }
                 ;
         equal: '(' '=' exp exp exps ')' {
@@ -166,7 +173,7 @@ num_op: plus | minus | multiply | divid | modulus | greater | smaller | equal ;
                    $$->type = stack_type.top();
                    $$->lhs = $3;
                    struct ASTNode *rhs = (struct ASTNode *)malloc(sizeof(struct ASTNode));
-                   rhs->type = stack_type.top();
+                   rhs->type = $4->type;
                    rhs->lhs = $4;
                    rhs->rhs = $5;
                    $$->rhs = rhs;
@@ -174,18 +181,28 @@ num_op: plus | minus | multiply | divid | modulus | greater | smaller | equal ;
                 }
                 ;
 logical_op: and_op | or_op | not_op ;
-        and_op: '(' AND exp exps ')' {
+        and_op: '(' AND exp exp exps ')' {
                     $$ = (struct ASTNode *)malloc(sizeof(struct ASTNode));
-                    $$->type = AST_AND;
+                    $$->type = stack_type.top();
                     $$->lhs = $3;
-                    $$->rhs = $4;
+                    struct ASTNode *rhs = (struct ASTNode *)malloc(sizeof(struct ASTNode));
+                    rhs->type = stack_type.top();
+                    rhs->lhs = $4;
+                    rhs->rhs = $5;
+                    $$->rhs = rhs;
+                    stack_type.pop();
                 }
                 ;
-        or_op: '(' OR exp exps ')' {
+        or_op: '(' OR exp exp exps ')' {
                     $$ = (struct ASTNode *)malloc(sizeof(struct ASTNode));
-                    $$->type = AST_OR;
+                    $$->type = stack_type.top();
                     $$->lhs = $3;
-                    $$->rhs = $4;
+                    struct ASTNode *rhs = (struct ASTNode *)malloc(sizeof(struct ASTNode));
+                    rhs->type = stack_type.top();
+                    rhs->lhs = $4;
+                    rhs->rhs = $5;
+                    $$->rhs = rhs;
+                    stack_type.pop();
                 }
                 ;
         not_op: '(' NOT exp ')' {
@@ -222,10 +239,18 @@ fun_exp: '(' FUN fun_ids fun_body ')'
         fun_name: ID {
             
         }
-        variables: variable
+        variables: variable variables
                 | /* lambda */
                 ;
-if_exp: '(' IF test_exp then_exp else_exp ')'
+if_exp: '(' IF test_exp then_exp else_exp ')' {
+            struct ASTIf *if_s = (struct ASTIf *)malloc(sizeof(struct ASTIf));
+            if_s->type = stack_type.top();
+            if_s->mhs = $3;
+            if_s->lhs = $4;
+            if_s->rhs = $5;
+            $$ = (struct ASTNode *)if_s;
+            stack_type.pop();
+        }
         ;
         test_exp: exp
                 ;
@@ -241,40 +266,43 @@ void yyerror(const char *msg) {
 
 int ASTArith(struct ASTNode *node) {
     int val;
-    puts("ASTArith");
     struct ASTNum *num = (struct ASTNum *)node;
-    struct ASTNum *l = (struct ASTNum *)node->lhs;
-    struct ASTNum *r = (struct ASTNum *)node->rhs;
     switch(node->type) {
         case AST_ADD:
-            puts("AST_ADD");
-            if (node->rhs->type != AST_NULL) {
-                /* keep visit */
-                val = l->num + ASTArith(node->rhs);
-            } else val = l->num;
+            val = ASTArith(node->lhs) + ASTArith(node->rhs);
+            if (node->rhs->type == AST_NULL) val--;
             break;
         case AST_MINUS:
-            puts("AST_MINUS");
-            val = l->num - r->num;
+            val = ASTArith(node->lhs) - ASTArith(node->rhs);
             break;
         case AST_MUL:
-            puts("AST_MUL");
-            if (node->rhs->type != AST_NULL) {
-                /* keep visit */
-                val = l->num * ASTArith(node->rhs);
-            } else val = l->num;
+            val = ASTArith(node->lhs) * ASTArith(node->rhs);
             break;
         case AST_DIV:
-            puts("AST_DIV");
-            val = l->num / r->num;
+            val = ASTArith(node->lhs) / ASTArith(node->rhs);
             break;
         case AST_MOD:
-            puts("AST_MOD");
-            val = l->num % r->num;
+            val = ASTArith(node->lhs) % ASTArith(node->rhs);
             break;
         case AST_NUM:
-            puts("AST_NUM");
             val = num->num;
+            break;
+        case AST_GREATER:
+            if (ASTArith(node->lhs) > ASTArith(node->rhs)) val = 1;
+            else val = 0;
+            break;
+        case AST_SMALLER:
+            if (ASTArith(node->lhs) < ASTArith(node->rhs)) val = 1;
+            else val = 0;
+            break;
+        case AST_EQUAL:
+            if (node->rhs->type != AST_NULL) {
+                if (ASTArith(node->lhs) == ASTArith(node->rhs)) val = 1;
+                else val = 0;
+            } else val = 1;
+            break;
+        case AST_NULL:
+            val = 1;
             break;
         default:
             puts("to default arithmetic!");
@@ -287,37 +315,27 @@ int ASTArith(struct ASTNode *node) {
 bool ASTLogical(struct ASTNode *node) {
     bool b;
     struct ASTBool *b_s = (struct ASTBool *)node;
-    struct ASTBool *l = (struct ASTBool *)node->lhs;
-    struct ASTBool *r = (struct ASTBool *)node->rhs;
     switch(node->type) {
         case AST_AND:
-            if (l->b && r->b) b = true;
-            else b = false;
+            b = ASTLogical(node->lhs) && ASTLogical(node->rhs);
             break;
         case AST_OR:
-            if (l->b || r->b) b = true;
-            else b = false;
+            b = ASTLogical(node->lhs) || ASTLogical(node->rhs);
             break;
         case AST_NOT:   
-            if (l->b == true) b = false;
-            else b = true;
+            b = !ASTLogical(node->lhs);
             break;
         case AST_GREATER:
-            if (l->b < r->b) b = true;
-            else b = false;
-            break;
         case AST_SMALLER:
-            if (l->b > r->b) b = true;
+        case AST_EQUAL:
+            if (ASTArith(node) == 1) b = true;
             else b = false;
             break;
-        case AST_EQUAL:
-            if (node->rhs->type != AST_NULL) {
-                if ((l->b) == ASTLogical(node->rhs)) b = true;
-                else b = false;
-            } else b = true;
-            break;
-        case AST_BOOL:
+        case AST_BOOL:            
             b = b_s->b;
+            break;
+        case AST_NULL:
+            b = true;
             break;
         default:
             puts("to default logical!");
@@ -325,6 +343,13 @@ bool ASTLogical(struct ASTNode *node) {
             break;
     }
     return b;
+}
+
+struct ASTNode* ASTIf_stmt(struct ASTNode *node) {
+    struct ASTIf *if_s = (struct ASTIf *)malloc(sizeof(struct ASTIf));
+    if_s = (struct ASTIf *)node;
+    if (ASTLogical(if_s->mhs)) return if_s->lhs; 
+    else return if_s->rhs;
 }
 
 struct ASTVal* ASTVisit(struct ASTNode *node) {
@@ -361,8 +386,10 @@ struct ASTVal* ASTVisit(struct ASTNode *node) {
             v->b = ASTLogical(node->lhs);;
             printf(v->b ? "#t\n" : "#f\n");
             break;
-        /* case AST_FUN:
-        case AST_IF: */
+        case AST_IF:
+            v = ASTVisit(ASTIf_stmt(node));
+            break;
+        /* case AST_FUN:*/
         default:
             break;
     }
