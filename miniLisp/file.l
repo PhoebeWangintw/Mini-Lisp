@@ -20,7 +20,7 @@ bool-val   #[t|f]
 "or"         { stack_type.push(AST_OR); return(OR); }
 "not"        { stack_type.push(AST_NOT); return(NOT); }
 "define"     { stack_type.push(AST_DEF); return(DEFINE); }
-"fun"        { return(FUN); }
+"fun"        { stack_type.push(AST_FUN_EXP); return(FUN); }
 "if"         { stack_type.push(AST_IF); return(IF); }
 "print-num"  { stack_type.push(AST_PNUM); return(PRINT_NUM); }
 "print-bool" { stack_type.push(AST_PBOOL); return(PRINT_BOOL); }

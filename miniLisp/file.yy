@@ -5,18 +5,23 @@
     #include<map>
     #include<string>
     #include<stack>
+    #include<vector>
     
     extern int yylex(void);
     void yyerror(const char *msg);
-    std::map<std::string, struct ASTNode *> def;
-    std::map<std::string, struct ASTNode *>::iterator iter;
+    typedef std::map<std::string, struct ASTNode *> Map;
+    Map* def;
+    Map::iterator iter;
     std::stack<ASTType> stack_type;
     struct ASTNode *root;
-    int ASTArith(struct ASTNode *);
-    bool ASTLogical(struct ASTNode *);
-    struct ASTVal* ASTVisit(struct ASTNode *);
-    struct ASTNode* ASTIf_stmt(struct ASTNode *node);
+    int ASTArith(struct ASTNode *, Map *map);
+    bool ASTLogical(struct ASTNode *, Map *map);
+    struct ASTVal* ASTVisit(struct ASTNode *, Map *map);
+    struct ASTNode* ASTIf_stmt(struct ASTNode *node, Map *map);
     void ASTDef_stmt(struct ASTNode *node);
+    void print_Result(struct ASTVal *v);
+    struct ASTNode *find_def(struct ASTNode *node, Map *map);
+    struct ASTVal* ASTFun_call(struct ASTNode *fun_exp, struct ASTNode *par_node);
     struct ASTNode* two_Node(struct ASTNode *exp_1, struct ASTNode *exp2);
     struct ASTNode* three_Node(struct ASTNode *exp_1, struct ASTNode *exp_2, struct ASTNode *exp_3);
 %}
@@ -33,9 +38,9 @@
 %token MOD AND OR NOT DEFINE FUN IF PRINT_NUM PRINT_BOOL
 %type<node> program stmt stmts print_stmt def_stmt exps exp
 %type<node> plus minus multiply divid modulus greater smaller equal
-%type<node> num_op logical_op fun_exp fun_call if_exp
-%type<node> and_op or_op not_op test_exp then_exp else_exp
-%type<node> variable variables
+%type<node> num_op logical_op fun_exp fun_call fun_ids fun_body if_exp
+%type<node> and_op or_op not_op test_exp then_exp else_exp fun_name
+%type<node> variable variables params param
 
 %left BOOL NUM ID
 %left '+' '-'
@@ -45,23 +50,19 @@
 %nonassoc UMINUS
 %%
 program: stmt stmts {
-                $$ = (struct ASTNode* )malloc(sizeof(struct ASTNode));
-                $$->type = AST_ROOT;
-                $$->lhs = $1;
-                $$->rhs = $2;
-                root = $$;
+            stack_type.push(AST_ROOT);
+            $$ = two_Node($1, $2);
+            root = $$;
         }
         ;
 stmts: stmt stmts {
-            $$ = (struct ASTNode *)malloc(sizeof(struct ASTNode));
-            $$->type = AST_ROOT;
-            $$->lhs = $1;
-            $$->rhs = $2;
+            stack_type.push(AST_ROOT);
+            $$ = two_Node($1, $2);
         }
-         | /* lambda */ { $$ = (struct ASTNode *)malloc(sizeof(struct ASTNode));
-                         $$->type = AST_NULL;
-                         $$->lhs = NULL;
-                         $$->rhs = NULL; }
+         | /* lambda */ { 
+            stack_type.push(AST_NULL);
+            $$ = two_Node(NULL, NULL); 
+        }
         ;
 stmt: exp | def_stmt | print_stmt ;
 print_stmt: '(' PRINT_NUM exp ')' { $$ = two_Node($3, NULL); }
@@ -73,10 +74,10 @@ exps: exp exps {
             $$->lhs = $1;
             $$->rhs = $2;
         }
-         | /* lambda */ { $$ = (struct ASTNode *)malloc(sizeof(struct ASTNode));
-                         $$->type = AST_NULL;
-                         $$->lhs = NULL;
-                         $$->rhs = NULL; }
+         | /* lambda */ { 
+            stack_type.push(AST_NULL);
+            $$ = two_Node(NULL, NULL); 
+        }
         ;
 exp: BOOL {
             struct ASTBool *b = (struct ASTBool *)malloc(sizeof(struct ASTBool));
@@ -90,7 +91,7 @@ exp: BOOL {
             num->num = $1;
             $$ = (struct ASTNode *)num;
         }
-        | variable | num_op | logical_op | fun_exp | fun_call | if_exp ;
+        | variable | num_op | logical_op | fun_exp | fun_call | if_exp;
 num_op: plus | minus | multiply | divid | modulus | greater | smaller | equal ;
         plus: '(' '+' exp exp exps ')' { $$ = three_Node($3, $4, $5); }
                 ;
@@ -115,9 +116,7 @@ logical_op: and_op | or_op | not_op ;
                 ;
         not_op: '(' NOT exp ')' { $$ = two_Node($3, NULL); }
                 ;
-def_stmt: '(' DEFINE variable exp ')' { 
-            $$ = two_Node($3, $4);
-        }
+def_stmt: '(' DEFINE variable exp ')' { $$ = two_Node($3, $4); }
         ;
         variable: ID {
             struct ASTId *id = (struct ASTId *)malloc(sizeof(struct ASTId));
@@ -127,26 +126,41 @@ def_stmt: '(' DEFINE variable exp ')' {
             $$ = (struct ASTNode *)id;
         }
         ;
-fun_exp: '(' FUN fun_ids fun_body ')'
+fun_exp: '(' FUN fun_ids fun_body ')' { $$ = two_Node($3, $4); }
         ;
-        fun_ids: '(' variables ')' {  }
+        fun_ids: '(' variables ')' { $$ = $2; }
                 ;
         fun_body: exp
                 ;
-        fun_call: '(' fun_exp param ')'  {}
-                | '(' fun_name param ')' {
-                        //ex. (fib 1)
-                    }
+        fun_call: '(' fun_exp params ')'  { 
+                    stack_type.push(AST_FUN_CALL);
+                    $$ = two_Node($2, $3);
+                }
+                | '(' fun_name params ')' {
+                    stack_type.push(AST_FUN_NAME);
+                    $$ = two_Node($2, $3);
+                }
                 ;
-        param: exp {
-            // $$ = $1;
-        }
+        fun_name:variable;
+        params: param params {
+                    stack_type.push(AST_FUN_PARAM);
+                    $$ = two_Node($1, $2);
+                }
+                | /* lambda */ {
+                    stack_type.push(AST_NULL);
+                    $$ = two_Node(NULL, NULL);
+                }
                 ;
-        fun_name: ID {
-            
-        }
-        variables: variable variables
-                | /* lambda */
+        param: exp
+                ;
+        variables: variable variables {
+                    stack_type.push(AST_ID);
+                    $$ = two_Node($1, $2);
+                }
+                | /* lambda */ { 
+                    stack_type.push(AST_NULL);
+                    $$ = two_Node(NULL, NULL); 
+                }
                 ;
 if_exp: '(' IF test_exp then_exp else_exp ')' {
             struct ASTIf *if_s = (struct ASTIf *)malloc(sizeof(struct ASTIf));
@@ -192,42 +206,42 @@ struct ASTNode* three_Node(struct ASTNode *exp_1, struct ASTNode *exp_2, struct 
     return reduce;
 }
 
-int ASTArith(struct ASTNode *node) {
+int ASTArith(struct ASTNode *node, Map *map) {
     int val;
     struct ASTNum *num = (struct ASTNum *)node;
     struct ASTId *id = (struct ASTId *)node;
     std::string str;
     switch(node->type) {
         case AST_ADD:
-            val = ASTArith(node->lhs) + ASTArith(node->rhs);
+            val = ASTArith(node->lhs, map) + ASTArith(node->rhs, map);
             if (node->rhs->type == AST_NULL) val--;
             break;
         case AST_MINUS:
-            val = ASTArith(node->lhs) - ASTArith(node->rhs);
+            val = ASTArith(node->lhs, map) - ASTArith(node->rhs, map);
             break;
         case AST_MUL:
-            val = ASTArith(node->lhs) * ASTArith(node->rhs);
+            val = ASTArith(node->lhs, map) * ASTArith(node->rhs, map);
             break;
         case AST_DIV:
-            val = ASTArith(node->lhs) / ASTArith(node->rhs);
+            val = ASTArith(node->lhs, map) / ASTArith(node->rhs, map);
             break;
         case AST_MOD:
-            val = ASTArith(node->lhs) % ASTArith(node->rhs);
+            val = ASTArith(node->lhs, map) % ASTArith(node->rhs, map);
             break;
         case AST_NUM:
             val = num->num;
             break;
         case AST_GREATER:
-            if (ASTArith(node->lhs) > ASTArith(node->rhs)) val = 1;
+            if (ASTArith(node->lhs, map) > ASTArith(node->rhs, map)) val = 1;
             else val = 0;
             break;
         case AST_SMALLER:
-            if (ASTArith(node->lhs) < ASTArith(node->rhs)) val = 1;
+            if (ASTArith(node->lhs, map) < ASTArith(node->rhs, map)) val = 1;
             else val = 0;
             break;
         case AST_EQUAL:
             if (node->rhs->type != AST_NULL) {
-                if (ASTArith(node->lhs) == ASTArith(node->rhs)) val = 1;
+                if (ASTArith(node->lhs, map) == ASTArith(node->rhs, map)) val = 1;
                 else val = 0;
             } else val = 1;
             break;
@@ -236,11 +250,11 @@ int ASTArith(struct ASTNode *node) {
             break;
         case AST_ID:
             str.assign(id->id, strlen(id->id));
-            iter = def.find(str);
-            if (iter == def.end()) {
+            iter = map->find(str);
+            if (iter == map->end()) {
                 puts("Haven't defined yet! in ASTArith.");
             } else {
-                val = ASTArith(iter->second);
+                val = ASTVisit(iter->second, map)->num;
             }
             break;
         default:
@@ -251,27 +265,39 @@ int ASTArith(struct ASTNode *node) {
     return val;
 }
 
-bool ASTLogical(struct ASTNode *node) {
+bool ASTLogical(struct ASTNode *node, Map *map) {
     bool b;
     struct ASTBool *b_s = (struct ASTBool *)node;
+    struct ASTId *id = (struct ASTId *)node;
+    std::string str;
     switch(node->type) {
         case AST_AND:
-            b = ASTLogical(node->lhs) && ASTLogical(node->rhs);
+            b = ASTLogical(node->lhs, map) && ASTLogical(node->rhs, map);
             break;
         case AST_OR:
-            b = ASTLogical(node->lhs) || ASTLogical(node->rhs);
+            b = ASTLogical(node->lhs, map) || ASTLogical(node->rhs, map);
             break;
         case AST_NOT:   
-            b = !ASTLogical(node->lhs);
+            b = !ASTLogical(node->lhs, map);
             break;
         case AST_GREATER:
         case AST_SMALLER:
         case AST_EQUAL:
-            if (ASTArith(node) == 1) b = true;
+            if (ASTArith(node, map) == 1) b = true;
             else b = false;
             break;
         case AST_BOOL:            
             b = b_s->b;
+            break;
+        case AST_ID:
+            str.assign(id->id, strlen(id->id));
+            iter = map->find(str);
+            if (iter == map->end()) {
+                puts("Haven't defined yet! in ASTLogical.");
+                exit(0);
+            } else {
+                b = ASTVisit(iter->second, map)->b;
+            }
             break;
         case AST_NULL:
             b = true;
@@ -284,42 +310,93 @@ bool ASTLogical(struct ASTNode *node) {
     return b;
 }
 
-struct ASTNode* ASTIf_stmt(struct ASTNode *node) {
+struct ASTNode* ASTIf_stmt(struct ASTNode *node, Map *map) {
     struct ASTIf *if_s = (struct ASTIf *)malloc(sizeof(struct ASTIf));
     if_s = (struct ASTIf *)node;
-    if (ASTLogical(if_s->mhs)) return if_s->lhs; 
+    if (ASTLogical(if_s->mhs, map)) return if_s->lhs; 
     else return if_s->rhs;
 }
 
 void ASTDef_stmt(struct ASTNode *node) {
     struct ASTId *id = (struct ASTId *)node->lhs;
     std::string str(id->id);
-    iter = def.find(str);
-    if (iter != def.end()) {
+    iter = def->find(str);
+    if (iter != def->end()) {
         /* if found -> already defined */
         puts("Redefined");
         printf("id->id: %s\n", id->id);
         exit(0);
     } else {
+        printf("node->rhs->type: %d\n", node->rhs->type);
         printf("define: %s\n", id->id);
-        def[str] = node->rhs;
+        (*def)[str] = node->rhs;
     }
 }
 
-struct ASTVal* ASTVisit(struct ASTNode *node) {
+
+struct ASTVal* ASTFun_call(struct ASTNode *fun_exp, struct ASTNode *par_node) {
+    std::vector<std::string> ids;
+    std::vector<struct ASTNode *> params;
+    struct ASTNode *fun_body = fun_exp->rhs;
+    struct ASTNode *id_node = fun_exp->lhs;
+    while (par_node->type != AST_NULL) {
+        struct ASTNode *n = (struct ASTNode *)ASTVisit(par_node->lhs, def);
+        params.push_back(n);
+        par_node = par_node->rhs;
+    }
+    while (id_node->rhs->type != AST_NULL) {
+        std::string str(ASTVisit(id_node->lhs, def)->id);
+        ids.push_back(str);
+        printf("str: %s\n", str.c_str());
+        id_node = id_node->rhs;
+    }
+    std::string str(ASTVisit(id_node->lhs, def)->id);
+    ids.push_back(str);
+    Map* fun_map = new Map();
+
+    if (params.size() == ids.size()) {
+        std::vector<struct ASTNode *>::iterator pa_it;
+        std::vector<std::string>::iterator id_it;
+        for (pa_it = params.begin(), id_it = ids.begin(); pa_it != params.end(); ++pa_it, ++id_it) {
+            (*fun_map)[*id_it] = *pa_it;
+        }
+    } else {
+        puts("size of params and ids do not match");
+        exit(0);
+    }
+    /* fun_body */
+    return ASTVisit(fun_body, fun_map);
+}
+
+struct ASTNode *find_def(struct ASTNode *node, Map *map) {
+    struct ASTId *id = (struct ASTId *)node->lhs;
+    std::string str(id->id);
+    iter = def->find(str);
+    if (iter == def->end()) {
+        /* if found -> already defined */
+        puts("variable not defined yet.");
+        printf("id->id: %s\n", id->id);
+        exit(0);
+    }
+    return iter->second;
+}
+
+struct ASTVal* ASTVisit(struct ASTNode *node, Map* map) {
     struct ASTVal *v = (struct ASTVal *)malloc(sizeof(struct ASTVal));
+    struct ASTId *id = (struct ASTId *)node;
     switch(node->type) {
         case AST_ROOT:
-            ASTVisit(node->lhs);
-            ASTVisit(node->rhs);
+            ASTVisit(node->lhs, map);
+            ASTVisit(node->rhs, map);
             break;
         case AST_ADD:
         case AST_MINUS:
         case AST_MUL:
         case AST_DIV:
         case AST_MOD:
+        case AST_NUM:
             v->type = AST_NUM;
-            v->num = ASTArith(node);
+            v->num = ASTArith(node, map);
             break;
         case AST_AND:
         case AST_OR:
@@ -327,29 +404,42 @@ struct ASTVal* ASTVisit(struct ASTNode *node) {
         case AST_GREATER:
         case AST_SMALLER:
         case AST_EQUAL:
+        case AST_BOOL:
             v->type = AST_BOOL;
-            v->b = ASTLogical(node);
+            v->b = ASTLogical(node, map);
+            break;
+        case AST_ID:
+            /* add find id */
+            v->type = AST_ID;
+            v->id = (char *)malloc(sizeof(char) * strlen(id->id));
+            v->id = id->id;
             break;
         case AST_PNUM:
             v->type = AST_NUM;
-            v->num = ASTArith(node->lhs);
+            v->num = ASTArith(node->lhs, map);
             printf("%d\n", v->num);
             break;
         case AST_PBOOL:
             v->type = AST_BOOL;
-            v->b = ASTLogical(node->lhs);;
+            v->b = ASTLogical(node->lhs, map);;
             printf(v->b ? "#t\n" : "#f\n");
             break;
         case AST_IF:
-            v = ASTVisit(ASTIf_stmt(node));
+            v = ASTVisit(ASTIf_stmt(node, map), map);
+            print_Result(v);
             break;
         case AST_DEF:
             ASTDef_stmt(node);
             break;
+        case AST_FUN_NAME:
+            print_Result(ASTFun_call(find_def(node, map), node->rhs));
+            break;
+        case AST_FUN_CALL:
+            print_Result(ASTFun_call(node->lhs, node->rhs));
+            break;
         case AST_NULL:
             /* do nothing */
             break;
-        /* case AST_FUN:*/
         default:
             printf("ASTType: %d\n", node->type);
             puts("default ASTVisit");
@@ -358,9 +448,20 @@ struct ASTVal* ASTVisit(struct ASTNode *node) {
     return v;
 }
 
+void print_Result(struct ASTVal *v) {
+    if (v->type == AST_NUM) {
+        printf("val: %d\n", v->num);
+    } else if (v->type == AST_BOOL){
+        printf(v->b ? "val: #t\n" : "val: #f\n");
+    } else if (v->type == AST_ID) {
+        printf("val: %s\n", v->id);
+    }
+}
+
 int main(int argc, char *argv[]) {
     yyparse();
     puts("finish parsing");
-    ASTVisit(root);
+    def = new Map();
+    ASTVisit(root, def);
     return(0);
 }
