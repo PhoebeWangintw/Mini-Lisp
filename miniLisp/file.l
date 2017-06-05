@@ -13,17 +13,17 @@ number     0|[1-9]{digit}*|-[1-9]digit*
 ID         {letter}({letter}|{digit}|"-")*
 bool-val   #[t|f]
 %%
-\n           { return(0); }
-[ ]          { }
+<<EOF>>      { return(0); }
+[ ]|\n       { }
 "mod"        { return(MOD); }
 "and"        { stack_type.push(AST_AND); return(AND); }
 "or"         { stack_type.push(AST_OR); return(OR); }
 "not"        { stack_type.push(AST_NOT); return(NOT); }
-"define"     { return(DEFINE); }
+"define"     { stack_type.push(AST_DEF); return(DEFINE); }
 "fun"        { return(FUN); }
 "if"         { stack_type.push(AST_IF); return(IF); }
-"print-num"  { return(PRINT_NUM); }
-"print-bool" { return(PRINT_BOOL); }
+"print-num"  { stack_type.push(AST_PNUM); return(PRINT_NUM); }
+"print-bool" { stack_type.push(AST_PBOOL); return(PRINT_BOOL); }
 {bool-val}   { if (yytext[1] == 't') yylval.b = true;
                else yylval.b = false;
                return(BOOL); }
@@ -31,6 +31,7 @@ bool-val   #[t|f]
 {ID}         { yylval.id = strdup(yytext); return(ID); }
 "+"          { stack_type.push(AST_ADD); return(yytext[0]); }
 "*"          { stack_type.push(AST_MUL); return(yytext[0]); }
+"-"          { stack_type.push(AST_MINUS); return(yytext[0]); }
 "="          { stack_type.push(AST_EQUAL); return(yytext[0]); }
 ">"          { stack_type.push(AST_GREATER); return(yytext[0]); }
 "<"          { stack_type.push(AST_SMALLER); return(yytext[0]); }

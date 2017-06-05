@@ -15,6 +15,7 @@ enum ASTType {
     AST_SMALLER,
     AST_EQUAL,
     AST_FUN,
+    AST_DEF,
     AST_IF,
     AST_PNUM,
     AST_PBOOL,

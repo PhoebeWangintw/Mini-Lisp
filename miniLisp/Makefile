@@ -7,4 +7,4 @@ all:
 test:
 	./file < input.txt
 clear:
-	rm file file.tab.o lex.yy.o lex.yy.cc file.tab.cc file.tab.hh
+	rm input.txt file file.tab.o lex.yy.o lex.yy.cc file.tab.cc file.tab.hh

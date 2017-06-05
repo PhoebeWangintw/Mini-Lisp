@@ -1,2 +1,0 @@
-(print-bool (and #t (> 2 1)))
-
