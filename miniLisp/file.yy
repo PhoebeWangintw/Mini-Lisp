@@ -20,7 +20,6 @@
     struct ASTNode* ASTIf_stmt(struct ASTNode *node, Map *map);
     void ASTDef_stmt(struct ASTNode *node);
     void print_Result(struct ASTVal *v);
-    void valid_ID (char *s);
     struct ASTNode *find_def(struct ASTNode *node, Map *map);
     struct ASTVal* ASTFun_call(struct ASTNode *fun_exp, struct ASTNode *par_node);
     struct ASTNode* two_Node(struct ASTNode *exp_1, struct ASTNode *exp2);
@@ -242,7 +241,7 @@ int ASTArith(struct ASTNode *node, Map *map) {
             break;
         case AST_EQUAL:
             if (node->rhs->type != AST_NULL) {
-                if (ASTArith(node->lhs, map) == ASTArith(node->rhs, map)) val = 1;
+                if (ASTArith(node->lhs, map) == ASTArith(node->rhs->lhs, map)) val = 1;
                 else val = 0;
             } else val = 1;
             break;
@@ -258,11 +257,8 @@ int ASTArith(struct ASTNode *node, Map *map) {
                 val = ASTVisit(iter->second, map)->num;
             }
             break;
-        
         default:
-            puts("to default arithmetic!");
-            printf("type: %d\n", node->type);
-            val = 1;
+            val = ASTVisit(node, map)->num;
             break;
     }
     return val;
@@ -383,8 +379,8 @@ struct ASTVal* ASTFun_call(struct ASTNode *fun_exp, struct ASTNode *par_node) {
 struct ASTNode *find_def(struct ASTNode *node, Map *map) {
     struct ASTId *id = (struct ASTId *)node;
     std::string str(id->id);
-    iter = def->find(str);
-    if (iter == def->end()) {
+    iter = map->find(str);
+    if (iter == map->end()) {
         /* if found -> already defined */
         puts("variable not defined yet. in find_def");
         printf("id->id: %s\n", id->id);
@@ -463,17 +459,6 @@ void print_Result(struct ASTVal *v) {
         printf(v->b ? "val: #t\n" : "val: #f\n");
     } else if (v->type == AST_ID) {
         printf("val: %s\n", v->id);
-    }
-}
-
-void valid_ID (char *s) {
-    int i;
-    char invalid_id[9] = {"mod", "and", "or", "not", "define", "fun", "if", "print-num", "print-bool"};
-    for (i = 0; i < 9; ++i) {
-        if (strcmp(s, invalid[i]) == 0) {
-            puts("Invalid ID!");
-            exit(0);
-        }
     }
 }
 
