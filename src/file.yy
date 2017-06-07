@@ -144,7 +144,7 @@ fun_exp: '(' FUN fun_ids fun_body ')' { $$ = two_Node($3, $4); }
                 ;
         fun_name:variable;
         params: param params {
-                    stack_type.push(AST_FUN_PARAM);
+                    stack_type.push(AST_NUM);
                     $$ = two_Node($1, $2);
                 }
                 | /* lambda */ {
@@ -244,16 +244,13 @@ int ASTArith(ASTNode *node, Map *map) {
             val = 1;
             break;
         case AST_ID:
-            str.assign(id->id, strlen(id->id));
-            iter = map->find(str);
-            if (iter == map->end()) {
-                // puts("Haven't defined yet! in ASTArith.");
-            } else {
-                val = ASTVisit(iter->second, map)->num;
-            }
+            val = ASTVisit(find_def(node, map), map)->num;
             break;
         default:
-            val = ASTVisit(node, map)->num;
+            // val = ASTVisit(node, map)->num;
+            printf("unexpected type: %d\n", node->type);
+            puts("syntax error");
+            exit(0);
             break;
     }
     return val;
@@ -302,21 +299,15 @@ bool ASTLogical(ASTNode *node, Map *map) {
             b = b_s->b;
             break;
         case AST_ID:
-            str.assign(id->id, strlen(id->id));
-            iter = map->find(str);
-            if (iter == map->end()) {
-                // puts("Haven't defined yet! in ASTLogical.");
-                exit(0);
-            } else {
-                b = ASTVisit(iter->second, map)->b;
-            }
+            b = ASTVisit(find_def(node, map), map)->b;
             break;
         case AST_NULL:
             b = true;
             break;
         default:
-            puts("to default logical!");
-            b = true;
+            printf("unexpected type: %d\n", node->type);
+            puts("syntax error");
+            exit(0);
             break;
     }
     return b;
@@ -335,8 +326,8 @@ void ASTDef_stmt(ASTNode *node) {
     iter = def->find(str);
     if (iter != def->end()) {
         /* if found -> already defined */
-        // puts("Redefined");
-        // printf("id->id: %s\n", id->id);
+        puts("Redefined");
+        printf("id->id: %s\n", id->id);
         exit(0);
     } else {
         // printf("node->rhs->type: %d\n", node->rhs->type);
@@ -352,7 +343,9 @@ ASTVal* ASTFun_call(ASTNode *fun_exp, ASTNode *par_node) {
     ASTNode *fun_body = fun_exp->rhs;
     ASTNode *id_node = fun_exp->lhs;
     Map* fun_map = new Map();
-    
+    if (par_node == NULL) {
+        return ASTVisit(fun_body, fun_map);
+    }
     if (par_node->type == AST_NULL && id_node->type == AST_NULL) {
         return ASTVisit(fun_body, fun_map);
     }
@@ -361,15 +354,12 @@ ASTVal* ASTFun_call(ASTNode *fun_exp, ASTNode *par_node) {
         params.push_back(n);
         par_node = par_node->rhs;
     }
-    while (id_node->rhs->type != AST_NULL) {
+    while (id_node->type != AST_NULL) {
         ASTId *id = (ASTId *)id_node->lhs;
         std::string str(id->id);
         ids.push_back(str);
         id_node = id_node->rhs;
     }
-    ASTId *id = (ASTId *)id_node->lhs;
-    std::string str(id->id);
-    ids.push_back(str);
     
     if (params.size() == ids.size()) {
         std::vector<ASTNode *>::iterator pa_it;
@@ -378,7 +368,7 @@ ASTVal* ASTFun_call(ASTNode *fun_exp, ASTNode *par_node) {
             (*fun_map)[*id_it] = *pa_it;
         }
     } else {
-        puts("size of params and ids do not match");
+        puts("number of params and ids do not match");
         exit(0);
     }
     /* fun_body */
@@ -401,6 +391,7 @@ ASTNode *find_def(ASTNode *node, Map *map) {
 ASTVal* ASTVisit(ASTNode *node, Map* map) {
     ASTVal *v = (ASTVal *)malloc(sizeof(ASTVal));
     ASTId *id;
+    // printf("node->type: %d\n", node->type);
     switch(node->type) {
         case AST_ROOT:
             ASTVisit(node->lhs, map);
@@ -450,12 +441,17 @@ ASTVal* ASTVisit(ASTNode *node, Map* map) {
         case AST_FUN_CALL:
             v = ASTFun_call(node->lhs, node->rhs);
             break;
+        case AST_FUN_EXP:
+            v = ASTFun_call(node, NULL);
+            break;
         case AST_NULL:
             /* do nothing */
             break;
         default:
-            printf("ASTType: %d\n", node->type);
-            puts("default ASTVisit");
+            // printf("ASTType: %d\n", node->type);
+            printf("unexpected type%d\n", node->type);
+            puts("syntax error");
+            exit(0);
             break;
     }
     return v;

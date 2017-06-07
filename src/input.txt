@@ -1,1 +1,5 @@
-(print-bool (= (+ 1 1) 3 (/ 6 3)))
+(define x 5)
+(define y 2)
+(define foo (fun (x y) (+ x 6 7)))
+(print-num (foo x y))
+(print-num x)
