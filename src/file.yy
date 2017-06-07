@@ -210,8 +210,6 @@ ASTNode* three_Node(ASTNode *exp_1, ASTNode *exp_2, ASTNode *exp_3) {
 int ASTArith(ASTNode *node, Map *map) {
     int val;
     ASTNum *num = (ASTNum *)node;
-    ASTId *id = (ASTId *)node;
-    std::string str;
     switch(node->type) {
         case AST_ADD:
             val = ASTArith(node->lhs, map) + ASTArith(node->rhs, map);
@@ -271,8 +269,6 @@ bool ASTEqual(ASTNode *node, Map *map) {
 bool ASTLogical(ASTNode *node, Map *map) {
     bool b;
     ASTBool *b_s = (ASTBool *)node;
-    ASTId *id = (ASTId *)node;
-    std::string str;
     switch(node->type) {
         case AST_AND:
             b = ASTLogical(node->lhs, map) && ASTLogical(node->rhs, map);
@@ -314,8 +310,7 @@ bool ASTLogical(ASTNode *node, Map *map) {
 }
 
 ASTNode* ASTIf_stmt(ASTNode *node, Map *map) {
-    ASTIf *if_s = (ASTIf *)malloc(sizeof(ASTIf));
-    if_s = (ASTIf *)node;
+    ASTIf *if_s = (ASTIf *)node;
     if (ASTLogical(if_s->mhs, map)) return if_s->lhs; 
     else return if_s->rhs;
 }
@@ -326,8 +321,7 @@ void ASTDef_stmt(ASTNode *node) {
     iter = def->find(str);
     if (iter != def->end()) {
         /* if found -> already defined */
-        puts("Redefined");
-        printf("id->id: %s\n", id->id);
+        printf("Redefined id: %s\n", id->id);
         exit(0);
     } else {
         // printf("node->rhs->type: %d\n", node->rhs->type);
@@ -390,8 +384,6 @@ ASTNode *find_def(ASTNode *node, Map *map) {
 
 ASTVal* ASTVisit(ASTNode *node, Map* map) {
     ASTVal *v = (ASTVal *)malloc(sizeof(ASTVal));
-    ASTId *id;
-    // printf("node->type: %d\n", node->type);
     switch(node->type) {
         case AST_ROOT:
             ASTVisit(node->lhs, map);
@@ -448,7 +440,6 @@ ASTVal* ASTVisit(ASTNode *node, Map* map) {
             /* do nothing */
             break;
         default:
-            // printf("ASTType: %d\n", node->type);
             printf("unexpected type%d\n", node->type);
             puts("syntax error");
             exit(0);
@@ -469,7 +460,6 @@ void print_Result(ASTVal *v) {
 
 int main(int argc, char *argv[]) {
     yyparse();
-    // puts("finish parsing");
     def = new Map();
     ASTVisit(root, def);
     return(0);
