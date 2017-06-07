@@ -9,28 +9,28 @@
     
     extern int yylex(void);
     void yyerror(const char *msg);
-    typedef std::map<std::string, struct ASTNode *> Map;
+    typedef std::map<std::string, ASTNode *> Map;
     Map* def;
     Map::iterator iter;
     std::stack<ASTType> stack_type;
-    struct ASTNode *root;
-    int ASTArith(struct ASTNode *, Map *map);
-    bool ASTLogical(struct ASTNode *, Map *map);
-    struct ASTVal* ASTVisit(struct ASTNode *, Map *map);
-    struct ASTNode* ASTIf_stmt(struct ASTNode *node, Map *map);
-    void ASTDef_stmt(struct ASTNode *node);
-    void print_Result(struct ASTVal *v);
-    struct ASTNode *find_def(struct ASTNode *node, Map *map);
-    struct ASTVal* ASTFun_call(struct ASTNode *fun_exp, struct ASTNode *par_node);
-    struct ASTNode* two_Node(struct ASTNode *exp_1, struct ASTNode *exp2);
-    struct ASTNode* three_Node(struct ASTNode *exp_1, struct ASTNode *exp_2, struct ASTNode *exp_3);
+    ASTNode *root;
+    int ASTArith(ASTNode *, Map *map);
+    bool ASTLogical(ASTNode *, Map *map);
+    ASTVal* ASTVisit(ASTNode *, Map *map);
+    ASTNode* ASTIf_stmt(ASTNode *node, Map *map);
+    void ASTDef_stmt(ASTNode *node);
+    void print_Result(ASTVal *v);
+    ASTNode *find_def(ASTNode *node, Map *map);
+    ASTVal* ASTFun_call(ASTNode *fun_exp, ASTNode *par_node);
+    ASTNode* two_Node(ASTNode *exp_1, ASTNode *exp2);
+    ASTNode* three_Node(ASTNode *exp_1, ASTNode *exp_2, ASTNode *exp_3);
 %}
 
 %union {
     bool b;
     int num;
     char *id;
-    struct ASTNode *node;
+    ASTNode *node;
 }
 %token<b> BOOL
 %token<num> NUM
@@ -69,7 +69,7 @@ print_stmt: '(' PRINT_NUM exp ')' { $$ = two_Node($3, NULL); }
           | '(' PRINT_BOOL exp ')' { $$ = two_Node($3, NULL); }
           ;
 exps: exp exps {
-            $$ = (struct ASTNode *)malloc(sizeof(struct ASTNode));
+            $$ = (ASTNode *)malloc(sizeof(ASTNode));
             $$->type = stack_type.top();
             $$->lhs = $1;
             $$->rhs = $2;
@@ -80,16 +80,16 @@ exps: exp exps {
         }
         ;
 exp: BOOL {
-            struct ASTBool *b = (struct ASTBool *)malloc(sizeof(struct ASTBool));
+            ASTBool *b = (ASTBool *)malloc(sizeof(ASTBool));
             b->type = AST_BOOL;
             b->b = $1;
-            $$ = (struct ASTNode *)b;
+            $$ = (ASTNode *)b;
         }
         | NUM  {
-            struct ASTNum *num = (struct ASTNum *)malloc(sizeof(struct ASTNum));
+            ASTNum *num = (ASTNum *)malloc(sizeof(ASTNum));
             num->type = AST_NUM;
             num->num = $1;
-            $$ = (struct ASTNode *)num;
+            $$ = (ASTNode *)num;
         }
         | variable | num_op | logical_op | fun_exp | fun_call | if_exp;
 num_op: plus | minus | multiply | divid | modulus | greater | smaller | equal ;
@@ -119,11 +119,11 @@ logical_op: and_op | or_op | not_op ;
 def_stmt: '(' DEFINE variable exp ')' { $$ = two_Node($3, $4); }
         ;
         variable: ID {
-            struct ASTId *id = (struct ASTId *)malloc(sizeof(struct ASTId));
+            ASTId *id = (ASTId *)malloc(sizeof(ASTId));
             id->type = AST_ID;
             id->id = (char *)malloc(sizeof(char) * strlen($1));
             id->id = $1;
-            $$ = (struct ASTNode *)id;
+            $$ = (ASTNode *)id;
         }
         ;
 fun_exp: '(' FUN fun_ids fun_body ')' { $$ = two_Node($3, $4); }
@@ -163,12 +163,12 @@ fun_exp: '(' FUN fun_ids fun_body ')' { $$ = two_Node($3, $4); }
                 }
                 ;
 if_exp: '(' IF test_exp then_exp else_exp ')' {
-            struct ASTIf *if_s = (struct ASTIf *)malloc(sizeof(struct ASTIf));
+            ASTIf *if_s = (ASTIf *)malloc(sizeof(ASTIf));
             if_s->type = stack_type.top();
             if_s->mhs = $3;
             if_s->lhs = $4;
             if_s->rhs = $5;
-            $$ = (struct ASTNode *)if_s;
+            $$ = (ASTNode *)if_s;
             stack_type.pop();
         }
         ;
@@ -184,8 +184,8 @@ void yyerror(const char *msg) {
     exit(0);
 }
 
-struct ASTNode* two_Node(struct ASTNode *exp_1, struct ASTNode *exp_2) {
-    struct ASTNode *reduce = (struct ASTNode *)malloc(sizeof(struct ASTNode));
+ASTNode* two_Node(ASTNode *exp_1, ASTNode *exp_2) {
+    ASTNode *reduce = (ASTNode *)malloc(sizeof(ASTNode));
     reduce->type = stack_type.top();
     reduce->lhs = exp_1;
     reduce->rhs = exp_2;
@@ -193,11 +193,11 @@ struct ASTNode* two_Node(struct ASTNode *exp_1, struct ASTNode *exp_2) {
     return reduce;
 }
 
-struct ASTNode* three_Node(struct ASTNode *exp_1, struct ASTNode *exp_2, struct ASTNode *exp_3) {
-    struct ASTNode *reduce = (struct ASTNode *)malloc(sizeof(struct ASTNode));
+ASTNode* three_Node(ASTNode *exp_1, ASTNode *exp_2, ASTNode *exp_3) {
+    ASTNode *reduce = (ASTNode *)malloc(sizeof(ASTNode));
     reduce->type = stack_type.top();
     reduce->lhs = exp_1;
-    struct ASTNode *rhs = (struct ASTNode *)malloc(sizeof(struct ASTNode));
+    ASTNode *rhs = (ASTNode *)malloc(sizeof(ASTNode));
     rhs->type = stack_type.top();
     rhs->lhs = exp_2;
     rhs->rhs = exp_3;
@@ -206,10 +206,10 @@ struct ASTNode* three_Node(struct ASTNode *exp_1, struct ASTNode *exp_2, struct 
     return reduce;
 }
 
-int ASTArith(struct ASTNode *node, Map *map) {
+int ASTArith(ASTNode *node, Map *map) {
     int val;
-    struct ASTNum *num = (struct ASTNum *)node;
-    struct ASTId *id = (struct ASTId *)node;
+    ASTNum *num = (ASTNum *)node;
+    ASTId *id = (ASTId *)node;
     std::string str;
     switch(node->type) {
         case AST_ADD:
@@ -264,10 +264,10 @@ int ASTArith(struct ASTNode *node, Map *map) {
     return val;
 }
 
-bool ASTLogical(struct ASTNode *node, Map *map) {
+bool ASTLogical(ASTNode *node, Map *map) {
     bool b;
-    struct ASTBool *b_s = (struct ASTBool *)node;
-    struct ASTId *id = (struct ASTId *)node;
+    ASTBool *b_s = (ASTBool *)node;
+    ASTId *id = (ASTId *)node;
     std::string str;
     switch(node->type) {
         case AST_AND:
@@ -313,15 +313,15 @@ bool ASTLogical(struct ASTNode *node, Map *map) {
     return b;
 }
 
-struct ASTNode* ASTIf_stmt(struct ASTNode *node, Map *map) {
-    struct ASTIf *if_s = (struct ASTIf *)malloc(sizeof(struct ASTIf));
-    if_s = (struct ASTIf *)node;
+ASTNode* ASTIf_stmt(ASTNode *node, Map *map) {
+    ASTIf *if_s = (ASTIf *)malloc(sizeof(ASTIf));
+    if_s = (ASTIf *)node;
     if (ASTLogical(if_s->mhs, map)) return if_s->lhs; 
     else return if_s->rhs;
 }
 
-void ASTDef_stmt(struct ASTNode *node) {
-    struct ASTId *id = (struct ASTId *)node->lhs;
+void ASTDef_stmt(ASTNode *node) {
+    ASTId *id = (ASTId *)node->lhs;
     std::string str(id->id);
     iter = def->find(str);
     if (iter != def->end()) {
@@ -337,33 +337,33 @@ void ASTDef_stmt(struct ASTNode *node) {
 }
 
 
-struct ASTVal* ASTFun_call(struct ASTNode *fun_exp, struct ASTNode *par_node) {
+ASTVal* ASTFun_call(ASTNode *fun_exp, ASTNode *par_node) {
     std::vector<std::string> ids;
-    std::vector<struct ASTNode *> params;
-    struct ASTNode *fun_body = fun_exp->rhs;
-    struct ASTNode *id_node = fun_exp->lhs;
+    std::vector<ASTNode *> params;
+    ASTNode *fun_body = fun_exp->rhs;
+    ASTNode *id_node = fun_exp->lhs;
     Map* fun_map = new Map();
     
     if (par_node->type == AST_NULL && id_node->type == AST_NULL) {
         return ASTVisit(fun_body, fun_map);
     }
     while (par_node->type != AST_NULL) {
-        struct ASTNode *n = (struct ASTNode *)ASTVisit(par_node->lhs, def);
+        ASTNode *n = (ASTNode *)ASTVisit(par_node->lhs, def);
         params.push_back(n);
         par_node = par_node->rhs;
     }
     while (id_node->rhs->type != AST_NULL) {
-        struct ASTId *id = (struct ASTId *)id_node->lhs;
+        ASTId *id = (ASTId *)id_node->lhs;
         std::string str(id->id);
         ids.push_back(str);
         id_node = id_node->rhs;
     }
-    struct ASTId *id = (struct ASTId *)id_node->lhs;
+    ASTId *id = (ASTId *)id_node->lhs;
     std::string str(id->id);
     ids.push_back(str);
     
     if (params.size() == ids.size()) {
-        std::vector<struct ASTNode *>::iterator pa_it;
+        std::vector<ASTNode *>::iterator pa_it;
         std::vector<std::string>::iterator id_it;
         for (pa_it = params.begin(), id_it = ids.begin(); pa_it != params.end(); ++pa_it, ++id_it) {
             (*fun_map)[*id_it] = *pa_it;
@@ -376,8 +376,8 @@ struct ASTVal* ASTFun_call(struct ASTNode *fun_exp, struct ASTNode *par_node) {
     return ASTVisit(fun_body, fun_map);
 }
 
-struct ASTNode *find_def(struct ASTNode *node, Map *map) {
-    struct ASTId *id = (struct ASTId *)node;
+ASTNode *find_def(ASTNode *node, Map *map) {
+    ASTId *id = (ASTId *)node;
     std::string str(id->id);
     iter = map->find(str);
     if (iter == map->end()) {
@@ -389,9 +389,9 @@ struct ASTNode *find_def(struct ASTNode *node, Map *map) {
     return iter->second;
 }
 
-struct ASTVal* ASTVisit(struct ASTNode *node, Map* map) {
-    struct ASTVal *v = (struct ASTVal *)malloc(sizeof(struct ASTVal));
-    struct ASTId *id;
+ASTVal* ASTVisit(ASTNode *node, Map* map) {
+    ASTVal *v = (ASTVal *)malloc(sizeof(ASTVal));
+    ASTId *id;
     switch(node->type) {
         case AST_ROOT:
             ASTVisit(node->lhs, map);
@@ -452,7 +452,7 @@ struct ASTVal* ASTVisit(struct ASTNode *node, Map* map) {
     return v;
 }
 
-void print_Result(struct ASTVal *v) {
+void print_Result(ASTVal *v) {
     if (v->type == AST_NUM) {
         printf("val: %d\n", v->num);
     } else if (v->type == AST_BOOL){

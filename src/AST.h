@@ -9,42 +9,49 @@ enum ASTType {
     AST_NUM, AST_ID, AST_FUN_NAME, AST_NULL
 };
 
-struct ASTNode {
+struct _ASTNode {
     enum ASTType type;
-    struct ASTNode *lhs, *rhs;
+    struct _ASTNode *lhs, *rhs;
 };
 
-struct ASTIf {
+typedef struct _ASTNode ASTNode;
+
+struct _ASTIf {
     enum ASTType type;
-    struct ASTNode *lhs, *mhs, *rhs;
+    ASTNode *lhs, *mhs, *rhs;
 };
 
-struct ASTVal {
+typedef struct _ASTIf ASTIf;
+
+struct _ASTVal {
     enum ASTType type;
     int num;
     bool b;
     char *id;
 };
+
+typedef struct _ASTVal ASTVal;
 
 /* for terminal */
-struct ASTNum {
+struct _ASTNum {
     enum ASTType type;
     int num;
 };
 
-struct ASTBool {
+typedef struct _ASTNum ASTNum;
+
+struct _ASTBool {
     enum ASTType type;
     bool b;
 };
 
-struct ASTId {
+typedef struct _ASTBool ASTBool;
+
+struct _ASTId {
     enum ASTType type;
     char *id;
 };
 
-struct fun {
-    char *name;
-    int paramNum;
-};
+typedef struct _ASTId ASTId;
 
 #endif

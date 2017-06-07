@@ -14,7 +14,7 @@ ID         {letter}({letter}|{digit}|"-")*
 bool-val   #[t|f]
 %%
 <<EOF>>      { return(0); }
-[ ]|\n       { }
+{separator}  { }
 "mod"        { stack_type.push(AST_MOD); return(MOD); }
 "and"        { stack_type.push(AST_AND); return(AND); }
 "or"         { stack_type.push(AST_OR); return(OR); }
