@@ -20,6 +20,7 @@
     ASTNode* ASTIf_stmt(ASTNode *node, Map *map);
     void ASTDef_stmt(ASTNode *node);
     void print_Result(ASTVal *v);
+    bool ASTEqual(ASTNode *node, Map *map);
     ASTNode *find_def(ASTNode *node, Map *map);
     ASTVal* ASTFun_call(ASTNode *fun_exp, ASTNode *par_node);
     ASTNode* two_Node(ASTNode *exp_1, ASTNode *exp2);
@@ -239,12 +240,6 @@ int ASTArith(ASTNode *node, Map *map) {
             if (ASTArith(node->lhs, map) < ASTArith(node->rhs, map)) val = 1;
             else val = 0;
             break;
-        case AST_EQUAL:
-            if (node->rhs->type != AST_NULL) {
-                if (ASTArith(node->lhs, map) == ASTArith(node->rhs->lhs, map)) val = 1;
-                else val = 0;
-            } else val = 1;
-            break;
         case AST_NULL:
             val = 1;
             break;
@@ -262,6 +257,18 @@ int ASTArith(ASTNode *node, Map *map) {
             break;
     }
     return val;
+}
+
+bool ASTEqual(ASTNode *node, Map *map) {
+    if (node->rhs->type != AST_NULL) {
+            /* represent true and false */
+        if (ASTArith(node->lhs, map) == ASTArith(node->rhs->lhs, map)) 
+            return ASTEqual(node->rhs, map);
+        else 
+            return false;
+    } else {
+        return true;
+    }
 }
 
 bool ASTLogical(ASTNode *node, Map *map) {
@@ -285,9 +292,11 @@ bool ASTLogical(ASTNode *node, Map *map) {
             break;
         case AST_GREATER:
         case AST_SMALLER:
-        case AST_EQUAL:
             if (ASTArith(node, map) == 1) b = true;
             else b = false;
+            break;
+        case AST_EQUAL:
+            b = ASTEqual(node, map);
             break;
         case AST_BOOL:            
             b = b_s->b;
